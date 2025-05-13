@@ -90,7 +90,7 @@ class STDMAE(nn.Module):
         
         # 4. 최근 패치 선택 (마지막 패치만 사용)
         out_len = 1  # 선택할 패치 수
-        hidden_states = hidden_states[:, :, -out_len, :]  # [B, N, 2d]
+        hidden_states = hidden_states[:, :, -out_len, :]  # [B, N, 1, 2d]
         
         # 5. 백엔드 모델(GraphWaveNet)을 통한 예측
         # short_term_history: 최근 단기 데이터
