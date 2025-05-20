@@ -9,9 +9,9 @@ class nconv(nn.Module):
     인접 행렬 A와 노드 특성 x 간의 메시지 패싱을 구현
     """
     def __init__(self):
-        super(nconv, self).__init__()
+        super(nconv,self).__init__()
 
-    def forward(self, x, A):
+    def forward(self,x, A):
         """
         그래프 컨볼루션 연산 수행
         Args:
@@ -26,9 +26,9 @@ class nconv(nn.Module):
         if len(A.shape) == 3:
             # einsum: 'ncvl,nvw->ncwl'은 노드 차원(v)에 대해 메시지 패싱
             # n: 배치, c: 채널, v/w: 노드, l: 시간
-            x = torch.einsum('ncvl,nvw->ncwl', (x, A))
+            x = torch.einsum('ncvl,nvw->ncwl',(x,A))
         else:
-            x = torch.einsum('ncvl,vw->ncwl', (x, A))
+            x = torch.einsum('ncvl,vw->ncwl',(x,A))
         
         return x.contiguous()  # 메모리 연속성 보장
 
@@ -38,16 +38,16 @@ class linear(nn.Module):
     1x1 컨볼루션을 통한 선형 변환 레이어
     채널 차원의 변환을 담당
     """
-    def __init__(self, c_in, c_out):
+    def __init__(self,c_in,c_out):
         """
         Args:
             c_in (int): 입력 채널 수
             c_out (int): 출력 채널 수
         """
-        super(linear, self).__init__()
-        self.mlp = torch.nn.Conv2d(c_in, c_out, kernel_size=(1, 1), padding=(0, 0), stride=(1, 1), bias=True)
+        super(linear,self).__init__()
+        self.mlp = torch.nn.Conv2d(c_in, c_out, kernel_size=(1, 1), padding=(0,0), stride=(1,1), bias=True)
 
-    def forward(self, x):
+    def forward(self,x):
         """
         Args:
             x (torch.Tensor): 입력 텐서 [배치, 채널, 노드, 시간]
@@ -62,7 +62,7 @@ class gcn(nn.Module):
     다중 홉(multi-hop) 그래프 컨볼루션 네트워크 레이어
     여러 인접 행렬과 차수(order)를 지원
     """
-    def __init__(self, c_in, c_out, dropout, support_len=3, order=2):
+    def __init__(self,c_in,c_out,dropout,support_len=3,order=2):
         """
         Args:
             c_in (int): 입력 채널 수
@@ -71,15 +71,15 @@ class gcn(nn.Module):
             support_len (int): 지원하는 인접 행렬 수
             order (int): 그래프 컨볼루션의 차수 (k-hop 이웃까지 고려)
         """
-        super(gcn, self).__init__()
+        super(gcn,self).__init__()
         self.nconv = nconv()
         # 입력 채널을 확장: 원본 + (차수 × 인접행렬 수)
-        c_in = (order * support_len + 1) * c_in
-        self.mlp = linear(c_in, c_out)
+        c_in = (order*support_len+1)*c_in
+        self.mlp = linear(c_in,c_out)
         self.dropout = dropout
         self.order = order
 
-    def forward(self, x, support):
+    def forward(self,x,support):
         """
         Args:
             x (torch.Tensor): 입력 특성 [배치, 채널, 노드, 시간]
@@ -91,17 +91,17 @@ class gcn(nn.Module):
         
         # 각 인접 행렬에 대해 처리
         for a in support:
-            x1 = self.nconv(x, a)  # 1차 이웃 특성
+            x1 = self.nconv(x,a)  # 1차 이웃 특성
             out.append(x1)
             
             # 2차 이상의 이웃(multi-hop) 처리
             for k in range(2, self.order + 1):
-                x2 = self.nconv(x1, a)  # k차 이웃 특성
+                x2 = self.nconv(x1,a)  # k차 이웃 특성
                 out.append(x2)
                 x1 = x2  # 다음 차수 계산을 위한 업데이트
 
         # 모든 결과 연결 (원본 + 모든 홉 결과)
-        h = torch.cat(out, dim=1)
+        h = torch.cat(out,dim=1)
         h = self.mlp(h)  # 채널 차원 변환
         h = F.dropout(h, self.dropout, training=self.training)  # 드롭아웃 적용
         return h
@@ -117,9 +117,7 @@ class GraphWaveNet(nn.Module):
     Link: https://arxiv.org/abs/1906.00121
     """
 
-    def __init__(self, num_nodes, supports, dropout=0.3, gcn_bool=True, addaptadj=True, aptinit=None, in_dim=2,
-                 out_dim=12, residual_channels=32, dilation_channels=32, skip_channels=256, end_channels=512,
-                 kernel_size=2, blocks=4, layers=2, **kwargs):
+    def __init__(self, num_nodes, supports, dropout=0.3, gcn_bool=True, addaptadj=True, aptinit=None, in_dim=2,out_dim=12,residual_channels=32,dilation_channels=32,skip_channels=256,end_channels=512,kernel_size=2,blocks=4,layers=2, **kwargs):
         """
         Args:
             num_nodes (int): 그래프의 노드 수
@@ -138,6 +136,7 @@ class GraphWaveNet(nn.Module):
             blocks (int): TCN 블록 수
             layers (int): 각 블록 내 레이어 수
         """
+
         super(GraphWaveNet, self).__init__()
         self.dropout = dropout
         self.blocks = blocks
@@ -152,7 +151,7 @@ class GraphWaveNet(nn.Module):
         self.skip_convs = nn.ModuleList()    # 스킵 연결 컨볼루션
         self.bn = nn.ModuleList()            # 배치 정규화
         self.gconv = nn.ModuleList()         # 그래프 컨볼루션
-        self.in_dim = in_dim
+        self.in_dim=in_dim
         
         # STD-MAE의 표현을 처리하기 위한 MLP
         # Temporal 표현(96차원)을 256차원으로 변환
@@ -161,7 +160,7 @@ class GraphWaveNet(nn.Module):
         self.fc_his_s = nn.Sequential(nn.Linear(96, 512), nn.ReLU(), nn.Linear(512, 256), nn.ReLU())
         
         # 입력 컨볼루션 - 초기 특성 매핑
-        self.start_conv = nn.Conv2d(in_channels=in_dim, out_channels=residual_channels, kernel_size=(1, 1))
+        self.start_conv = nn.Conv2d(in_channels=in_dim, out_channels=residual_channels, kernel_size=(1,1))
         self.supports = supports
 
         receptive_field = 1  # 수용 영역 초기화
@@ -180,7 +179,7 @@ class GraphWaveNet(nn.Module):
                 # 학습 가능한 노드 임베딩 (노드 간 관계를 학습)
                 self.nodevec1 = nn.Parameter(torch.randn(num_nodes, 10), requires_grad=True)
                 self.nodevec2 = nn.Parameter(torch.randn(10, num_nodes), requires_grad=True)
-                self.supports_len += 1
+                self.supports_len +=1
             else:
                 # SVD 기반 초기화
                 if supports is None:
@@ -200,13 +199,11 @@ class GraphWaveNet(nn.Module):
                 # 확장 컨볼루션 (dilated convolution) 설정
                 self.filter_convs.append(nn.Conv2d(in_channels=residual_channels,
                                                   out_channels=dilation_channels,
-                                                  kernel_size=(1, kernel_size),
-                                                  dilation=new_dilation))
+                                                  kernel_size=(1,kernel_size),dilation=new_dilation))
 
                 self.gate_convs.append(nn.Conv2d(in_channels=residual_channels,
                                                 out_channels=dilation_channels,
-                                                kernel_size=(1, kernel_size),
-                                                dilation=new_dilation))
+                                                kernel_size=(1, kernel_size),dilation=new_dilation))
 
                 # 잔차 연결을 위한 1x1 컨볼루션
                 self.residual_convs.append(nn.Conv2d(in_channels=dilation_channels,
@@ -217,8 +214,6 @@ class GraphWaveNet(nn.Module):
                 self.skip_convs.append(nn.Conv2d(in_channels=dilation_channels,
                                                 out_channels=skip_channels,
                                                 kernel_size=(1, 1)))
-                
-                # 배치 정규화
                 self.bn.append(nn.BatchNorm2d(residual_channels))
                 
                 # 확장 비율 증가 (2의 거듭제곱)
@@ -230,13 +225,15 @@ class GraphWaveNet(nn.Module):
                 
                 # GCN 추가 (필요시)
                 if self.gcn_bool:
-                    self.gconv.append(gcn(dilation_channels, residual_channels, dropout, support_len=self.supports_len))
+                    self.gconv.append(gcn(dilation_channels,residual_channels,dropout,support_len=self.supports_len))
 
-        # 최종 출력 컨볼루션 레이어
-        self.end_conv_1 = nn.Conv2d(in_channels=skip_channels, out_channels=end_channels, kernel_size=(1, 1), bias=True)
-        self.end_conv_2 = nn.Conv2d(in_channels=end_channels, out_channels=out_dim, kernel_size=(1, 1), bias=True)
+        # 최종 출력 컨볼루션 레이어 (FC Layer #1, FC Layer #2)
+        self.end_conv_1 = nn.Conv2d(in_channels=skip_channels, out_channels=end_channels, kernel_size=(1,1), bias=True)
+        self.end_conv_2 = nn.Conv2d(in_channels=end_channels, out_channels=out_dim, kernel_size=(1,1), bias=True)
 
         self.receptive_field = receptive_field
+
+
 
     def forward(self, input, hidden_states):
         """
@@ -255,15 +252,15 @@ class GraphWaveNet(nn.Module):
         input = input.transpose(1, 3)
         
         # 패딩 적용 (시간 차원)
-        input = nn.functional.pad(input, (1, 0, 0, 0))
+        input = nn.functional.pad(input,(1,0,0,0))
 
         # 입력 채널 선택
         input = input[:, :self.in_dim, :, :]
         in_len = input.size(3)
         
         # 수용 영역에 맞게 패딩
-        if in_len < self.receptive_field:
-            x = nn.functional.pad(input, (self.receptive_field - in_len, 0, 0, 0))
+        if in_len<self.receptive_field:
+            x = nn.functional.pad(input,(self.receptive_field-in_len,0,0,0))
         else:
             x = input
             
@@ -307,43 +304,45 @@ class GraphWaveNet(nn.Module):
             
             # 스킵 연결 차원 맞추기
             try:
-                skip = skip[:, :, :, -s.size(3):]
+                skip = skip[:, :, :,  -s.size(3):]
             except:
                 skip = 0
                 
             # 스킵 연결 합산
             skip = s + skip
 
+
             # GCN 또는 잔차 컨볼루션 적용
             if self.gcn_bool and self.supports is not None:
                 if self.addaptadj:
                     x = self.gconv[i](x, new_supports)  # 적응형 인접 행렬 사용
                 else:
-                    x = self.gconv[i](x, self.supports)  # 고정 인접 행렬 사용
+                    x = self.gconv[i](x,self.supports)  # 고정 인접 행렬 사용
             else:
                 x = self.residual_convs[i](x)  # GCN 없이 1x1 컨볼루션만 적용
 
             # 잔차 연결 합산
             x = x + residual[:, :, :, -x.size(3):]
-            
+
             # 배치 정규화
             x = self.bn[i](x)
 
         # STD-MAE의 Temporal 표현 처리
-        hidden_states_t = self.fc_his_t(hidden_states[:, :, :96])        # [B, N, 96] -> [B, N, 256]
+        hidden_states_t = self.fc_his_t(hidden_states[:,:,:96])        # [B, N, 96] -> [B, N, 256]
         hidden_states_t = hidden_states_t.transpose(1, 2).unsqueeze(-1)  # [B, N, 256] -> [B, 256, N, 1]
         skip = skip + hidden_states_t  # 스킵 연결에 Temporal 표현 추가
         
         # STD-MAE의 Spatial 표현 처리
-        hidden_states_s = self.fc_his_s(hidden_states[:, :, 96:])        # [B, N, 96] -> [B, N, 256]
+        hidden_states_s = self.fc_his_s(hidden_states[:,:,96:])        # [B, N, 96] -> [B, N, 256]
         hidden_states_s = hidden_states_s.transpose(1, 2).unsqueeze(-1)  # [B, N, 256] -> [B, 256, N, 1]
         skip = skip + hidden_states_s  # 스킵 연결에 Spatial 표현 추가
         
-        # 최종 출력 계산
+        # 최종 출력 계산 (FC Layer #1, #2)
         x = F.relu(skip)  # ReLU 활성화
-        x = F.relu(self.end_conv_1(x))  # 첫 번째 출력 컨볼루션
-        x = self.end_conv_2(x)  # 두 번째 출력 컨볼루션
+        x = F.relu(self.end_conv_1(x))  # [B, 256, N, 1] -> [B, 512, N, 1]
+        x = self.end_conv_2(x)  # [B, 512, N, 1] -> [B, 12, N, 1]
 
         # 출력 텐서 재구성: [B, P, N, 1] -> [B, N, P]
+        # P는 예측 길이(out_dim)로, 일반적으로 12시간의 미래 예측값
         x = x.squeeze(-1).transpose(1, 2)
         return x
